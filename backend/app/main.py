@@ -7,6 +7,7 @@ from app.routes import routes
 from app.routes import buses
 from app.routes import schedules
 from app.routes import journey 
+from app.routes import tracking
 
 app = FastAPI(
     title="MOOVIT-CHALO Intelligent Transport System",
@@ -24,3 +25,4 @@ app.include_router(routes.router)
 app.include_router(buses.router)
 app.include_router(schedules.router)
 app.include_router(journey.router)
+app.include_router(tracking.router)

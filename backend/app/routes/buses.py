@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.bus import Bus
-from app.models.etm_event import ETMEvent  # Ensure you import the Event model
+from app.models.etm_event import ETMEvent
 from app.schemas.bus import BusCreate
+from app.websocket.manager import manager
 from pydantic import BaseModel
 from datetime import datetime
-from app.models.etm_event import ETMEvent
 
 router = APIRouter(prefix="/buses", tags=["Buses"])
 
@@ -37,21 +38,35 @@ def add_bus(bus: BusCreate, db: Session = Depends(get_db)):
     db.refresh(new_bus)
     return {"message": "Bus added", "bus": new_bus.bus_number}
 
-# --- 3. NEW: Update Location Endpoint (Fixes 404 Error) ---
+# --- 3. Combined Update Location Endpoint ---
 @router.post("/update-location")
-def update_location(data: LocationUpdate, db: Session = Depends(get_db)):
+async def update_location(
+    data: LocationUpdate, 
+    background_tasks: BackgroundTasks, 
+    db: Session = Depends(get_db)
+):
+    # A. Log to Console
     print(f"📍 Update: Bus {data.bus_id} -> {data.lat}, {data.lon}")
 
-    # OPTIONAL: Save to DB (Unlock this if you want history)
-    new_event = ETMEvent(
-        bus_id=data.bus_id,
-        route_id=int(data.route_id),
-        lat=data.lat,
-        lon=data.lon,
-        speed=data.speed,
-        timestamp=datetime.fromisoformat(data.timestamp)
-    )
-    db.add(new_event)
-    db.commit()
+    # B. Save to Database (History)
+    # We wrap this in try/except so a DB error doesn't stop the live tracking
+    try:
+        new_event = ETMEvent(
+            bus_id=data.bus_id,
+            route_id=int(data.route_id),
+            lat=data.lat,
+            lon=data.lon,
+            speed=data.speed,
+            timestamp=datetime.fromisoformat(data.timestamp)
+        )
+        db.add(new_event)
+        db.commit()
+    except Exception as e:
+        print(f"⚠️ Error saving to DB: {e}")
+    
+    # C. Broadcast to WebSocket (Real-Time)
+    # Using jsonable_encoder ensures the data is perfectly formatted for JSON
+    payload = jsonable_encoder(data)
+    background_tasks.add_task(manager.broadcast, payload)
 
     return {"status": "success", "bus_id": data.bus_id}
