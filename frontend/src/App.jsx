@@ -1,10 +1,11 @@
 import React from 'react';
-
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+
 import LiveTracking from './pages/LiveTracking';
+import AdminDashboard from './pages/AdminDashboard';
 
 // ----------------------------------------------------------------------
-// ⚠️ NOTE: We will uncomment these imports as we build the pages later.
+// Future pages (enable when ready)
 // import Login from './pages/Login';
 // import Planner from './pages/Planner';
 // ----------------------------------------------------------------------
@@ -13,31 +14,53 @@ function App() {
   return (
     <Router>
       <div className="app-container">
-        {/* Navigation Header (Temporary for testing) */}
+        {/* Navigation Header */}
         <nav style={styles.nav}>
           <div style={styles.logo}>MOOVIT-CHALO</div>
+
           <div style={styles.links}>
             <Link to="/" style={styles.link}>Live Tracking</Link>
             <Link to="/planner" style={styles.link}>Trip Planner</Link>
+            <Link to="/admin" style={styles.link}>Admin Panel</Link>
             <Link to="/login" style={styles.link}>Login</Link>
           </div>
         </nav>
 
         {/* Route Definitions */}
         <Routes>
-          {/* DAY 6 GOAL: Live Map is the default home page */}
+          {/* Home */}
           <Route path="/" element={<LiveTracking />} />
 
-          {/* Placeholders for future days */}
-          <Route path="/planner" element={<div style={{padding: 20}}><h2>Trip Planner (Coming Soon)</h2></div>} />
-          <Route path="/login" element={<div style={{padding: 20}}><h2>Login Page (Coming Soon)</h2></div>} />
+          {/* Admin */}
+          <Route path="/admin" element={<AdminDashboard />} />
+
+          {/* Placeholders */}
+          <Route
+            path="/planner"
+            element={
+              <div style={{ padding: 20 }}>
+                <h2>Trip Planner (Coming Soon)</h2>
+              </div>
+            }
+          />
+
+          <Route
+            path="/login"
+            element={
+              <div style={{ padding: 20 }}>
+                <h2>Login Page (Coming Soon)</h2>
+              </div>
+            }
+          />
         </Routes>
       </div>
     </Router>
   );
 }
 
-// Simple internal styles for the nav bar
+// ----------------------------------------------------------------------
+// Simple internal styles (temporary)
+// ----------------------------------------------------------------------
 const styles = {
   nav: {
     display: 'flex',
@@ -60,7 +83,7 @@ const styles = {
     color: 'white',
     textDecoration: 'none',
     fontSize: '0.9rem',
-  }
+  },
 };
 
 export default App;

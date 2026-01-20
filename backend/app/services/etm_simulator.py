@@ -1,94 +1,137 @@
 import time
 import requests
-import sys
-import os
+import random
 from datetime import datetime
 from sqlalchemy import create_engine, text
 
-# --- CONFIGURATION ---
+# ---------------- CONFIGURATION ----------------
 API_URL = "http://127.0.0.1:8000/buses/update-location"
 DATABASE_URL = "postgresql://postgres:Manju%401234@localhost:5432/moovit_chalo"
+
 BUS_ID = "KA-01-F-1234"
-ROUTE_ID = 1      # Must match a route ID in your 'routes' table
-SPEED_FACTOR = 5  # Higher = Faster simulation (5x real speed)
+ROUTE_ID = 1
+BUS_CAPACITY = 50
+
+SPEED_FACTOR = 5          # Higher = Faster simulation
+INTERPOLATION_STEPS = 10  # Smoother movement
+REQUEST_TIMEOUT = 3
+# ----------------------------------------------
+
 
 def get_route_path():
-    """Fetches the ordered list of stop coordinates for the route from the DB."""
-    engine = create_engine(DATABASE_URL)
-    connection = engine.connect()
-    
-    # Query: Join route_stops and stops to get lat/lon in sequence
-    query = text("""
-        SELECT s.stop_name, s.lat, s.lon 
-        FROM route_stops rs
-        JOIN stops s ON rs.stop_id = s.stop_id
-        WHERE rs.route_id = :route_id
-        ORDER BY rs.sequence_number
-    """)
-    
-    result = connection.execute(query, {"route_id": ROUTE_ID}).fetchall()
-    connection.close()
-    return result
+    """Fetch ordered stop coordinates for a route."""
+    try:
+        engine = create_engine(DATABASE_URL)
+        query = text("""
+            SELECT s.stop_name, s.lat, s.lon
+            FROM route_stops rs
+            JOIN stops s ON rs.stop_id = s.stop_id
+            WHERE rs.route_id = :route_id
+            ORDER BY rs.sequence_number
+        """)
+
+        with engine.connect() as connection:
+            return connection.execute(
+                query, {"route_id": ROUTE_ID}
+            ).fetchall()
+
+    except Exception as e:
+        print(f"❌ Database Error: {e}")
+        return []
+
+
+def calculate_speed(traffic_level: int) -> float:
+    """Determine speed based on traffic."""
+    if traffic_level > 80:
+        return 5.0     # Traffic Jam
+    elif traffic_level > 50:
+        return 20.0    # Moderate Traffic
+    return 40.0        # Clear Road
+
 
 def simulate():
-    print(f"🔄 Connecting to DB to fetch path for Route {ROUTE_ID}...")
+    print(f"🔄 Fetching route {ROUTE_ID} from database...")
     stops = get_route_path()
-    
+
     if not stops:
-        print("❌ Error: No stops found for this Route ID. Did you run the SQL script?")
+        print("❌ No stops found. Check DB & Route ID.")
         return
 
-    print(f"✅ Route loaded: {len(stops)} stops found.")
-    print(f"   Start: {stops[0][0]}")
-    print(f"   End:   {stops[-1][0]}")
-    print(f"🚌 Starting Bus {BUS_ID}...")
+    print(f"✅ Route loaded with {len(stops)} stops")
+    print(f"📍 Start: {stops[0][0]}")
+    print(f"🏁 End:   {stops[-1][0]}")
+    print(f"🚌 Bus ID: {BUS_ID}")
+    print("-" * 55)
 
     while True:
-        # Loop through each segment (Stop A -> Stop B)
         for i in range(len(stops) - 1):
-            start_node = stops[i]
-            end_node = stops[i+1]
-            
-            start_name, start_lat, start_lon = start_node
-            end_name, end_lat, end_lon = end_node
+            start_name, start_lat, start_lon = stops[i]
+            end_name, end_lat, end_lon = stops[i + 1]
 
-            print(f"\n🚦 Departed: {start_name} --> Heading to: {end_name}")
+            print(f"\n🚦 Departed {start_name} ➜ {end_name}")
 
-            # Interpolate: Create 10 intermediate points between stops
-            steps = 10
-            for step in range(steps + 1):
-                # Linear Interpolation formula
-                ratio = step / steps
+            for step in range(INTERPOLATION_STEPS + 1):
+
+                # ---------------- TRAFFIC ----------------
+                traffic_level = random.randint(0, 100)
+                current_speed = calculate_speed(traffic_level)
+
+                # ---------------- CROWD SIMULATION ----------------
+                # Random passengers boarding / leaving
+                passenger_count = random.randint(10, 60)
+
+                # ---------------- POSITION ----------------
+                ratio = step / INTERPOLATION_STEPS
                 current_lat = start_lat + (end_lat - start_lat) * ratio
                 current_lon = start_lon + (end_lon - start_lon) * ratio
 
+                # ---------------- PAYLOAD ----------------
                 payload = {
                     "bus_id": BUS_ID,
                     "route_id": str(ROUTE_ID),
                     "lat": current_lat,
                     "lon": current_lon,
-                    "speed": 40.0, # Simulated speed
+                    "speed": current_speed,
+                    "traffic_level": traffic_level,
+                    "passenger_count": passenger_count,
+                    "capacity": BUS_CAPACITY,
                     "timestamp": datetime.now().isoformat()
                 }
 
                 try:
-                    # SEND DATA TO SERVER
-                    response = requests.post(API_URL, json=payload)
-                    
-                    # LOGGING
-                    status = "✅" if response.status_code == 200 else "❌"
-                    print(f"\r{status} GPS: {current_lat:.5f}, {current_lon:.5f} | Server: {response.status_code}", end="")
-                    
-                except requests.exceptions.ConnectionError:
-                    print("\n⚠️ Connection Error: Is the FastAPI server running?")
+                    response = requests.post(
+                        API_URL,
+                        json=payload,
+                        timeout=REQUEST_TIMEOUT
+                    )
+
+                    status_icon = "✅" if response.status_code == 200 else "❌"
+                    crowd_status = (
+                        "FULL 🚨"
+                        if passenger_count > BUS_CAPACITY
+                        else "OK"
+                    )
+
+                    print(
+                        f"\r{status_icon} "
+                        f"Traffic: {traffic_level:3d}% | "
+                        f"Speed: {current_speed:4.1f} km/h | "
+                        f"Passengers: {passenger_count:2d}/{BUS_CAPACITY} "
+                        f"({crowd_status}) | "
+                        f"Server: {response.status_code}",
+                        end=""
+                    )
+
+                except requests.exceptions.RequestException as e:
+                    print(f"\n⚠️ API Error: {e}")
                     time.sleep(2)
 
-                time.sleep(2 / SPEED_FACTOR) # Delay between updates
+                # ---------------- TIME DELAY ----------------
+                time.sleep(2 / SPEED_FACTOR)
 
-        print("\n🏁 Reached Destination. Turning around in 5s...")
+        print("\n\n🏁 Route completed. Restarting in 5 seconds...\n")
         time.sleep(5)
-        # Optional: Reverse the stops list to drive back
-        # stops.reverse() 
+
 
 if __name__ == "__main__":
     simulate()
