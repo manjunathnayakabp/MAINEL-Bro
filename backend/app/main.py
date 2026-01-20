@@ -12,6 +12,8 @@ from app.routes import buses
 from app.routes import schedules
 from app.routes import journey
 from app.routes import tracking
+from app.routes import etm
+
 
 # --------------------------------------------------
 # App Initialization
@@ -54,3 +56,4 @@ app.include_router(buses.router)
 app.include_router(schedules.router)
 app.include_router(journey.router)
 app.include_router(tracking.router)
+app.include_router(etm.router)

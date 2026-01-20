@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 
 import LiveTracking from './pages/LiveTracking';
 import AdminDashboard from './pages/AdminDashboard';
+import ManualETM from './pages/ManualETM';  
 
 // ----------------------------------------------------------------------
 // Future pages (enable when ready)
@@ -33,6 +34,7 @@ function App() {
 
           {/* Admin */}
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/etm" element={<ManualETM />} />
 
           {/* Placeholders */}
           <Route
