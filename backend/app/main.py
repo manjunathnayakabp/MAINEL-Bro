@@ -13,6 +13,7 @@ from app.routes import schedules
 from app.routes import journey
 from app.routes import tracking
 from app.routes import etm
+from app.routes import trip_planner
 
 
 # --------------------------------------------------
@@ -57,3 +58,4 @@ app.include_router(schedules.router)
 app.include_router(journey.router)
 app.include_router(tracking.router)
 app.include_router(etm.router)
+app.include_router(trip_planner.router)

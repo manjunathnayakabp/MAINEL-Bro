@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import LiveTracking from './pages/LiveTracking';
 import AdminDashboard from './pages/AdminDashboard';
 import ManualETM from './pages/ManualETM';  
+import TripPlanner from './pages/TripPlanner';
 
 // ----------------------------------------------------------------------
 // Future pages (enable when ready)
@@ -36,15 +37,8 @@ function App() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/etm" element={<ManualETM />} />
 
-          {/* Placeholders */}
-          <Route
-            path="/planner"
-            element={
-              <div style={{ padding: 20 }}>
-                <h2>Trip Planner (Coming Soon)</h2>
-              </div>
-            }
-          />
+          {/* Trip Planner */}
+          <Route path="/planner" element={<TripPlanner />} />
 
           <Route
             path="/login"

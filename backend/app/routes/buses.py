@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -16,9 +17,9 @@ from app.services.allocation_rules import check_allocation_needs
 
 router = APIRouter(prefix="/buses", tags=["Buses"])
 
-# ------------------------------------------------------------------
-# 1. SCHEMA: Incoming GPS + Traffic + Crowd Data
-# ------------------------------------------------------------------
+# =====================================================
+# 1. SCHEMA: Incoming Live Telemetry
+# =====================================================
 class LocationUpdate(BaseModel):
     bus_id: str
     route_id: str
@@ -31,12 +32,15 @@ class LocationUpdate(BaseModel):
     timestamp: str
 
 
-# ------------------------------------------------------------------
-# 2. ADD BUS ENDPOINT
-# ------------------------------------------------------------------
+# =====================================================
+# 2. ADD BUS
+# =====================================================
 @router.post("/")
 def add_bus(bus: BusCreate, db: Session = Depends(get_db)):
-    existing_bus = db.query(Bus).filter(Bus.bus_number == bus.bus_number).first()
+    existing_bus = db.query(Bus).filter(
+        Bus.bus_number == bus.bus_number
+    ).first()
+
     if existing_bus:
         raise HTTPException(status_code=400, detail="Bus already exists")
 
@@ -56,29 +60,35 @@ def add_bus(bus: BusCreate, db: Session = Depends(get_db)):
     }
 
 
-# ------------------------------------------------------------------
-# 3. UPDATE LOCATION (LIVE TRACKING + RULE ENGINE)
-# ------------------------------------------------------------------
+# =====================================================
+# 3. UPDATE LOCATION (LIVE + RULE ENGINE)
+# =====================================================
 @router.post("/update-location")
 async def update_location(
     data: LocationUpdate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    # ---------------- LOG ----------------
+    # -------------------------------------------------
+    # LOG
+    # -------------------------------------------------
     print(
         f"📍 Bus {data.bus_id} | "
         f"Traffic: {data.traffic_level}% | "
-        f"Passengers: {data.passenger_count}/{data.capacity}"
+        f"Pax: {data.passenger_count}/{data.capacity}"
     )
 
-    # ---------------- DELAY RULES ----------------
+    # -------------------------------------------------
+    # DELAY RULES
+    # -------------------------------------------------
     status_text, color_code = calculate_delay_status(
         data.speed,
         data.traffic_level
     )
 
-    # ---------------- ALLOCATION RULES (FINAL FIX) ----------------
+    # -------------------------------------------------
+    # ALLOCATION RULES (CROWD + STALL DETECTION)
+    # -------------------------------------------------
     alerts = check_allocation_needs(
         bus_id=data.bus_id,
         route_id=data.route_id,
@@ -87,7 +97,32 @@ async def update_location(
         speed=data.speed
     )
 
-    # ---------------- SAVE TO DB (NON-BLOCKING) ----------------
+    # -------------------------------------------------
+    # UPDATE CURRENT BUS STATE (REALTIME SNAPSHOT)
+    # -------------------------------------------------
+    try:
+        db.execute(text("""
+            UPDATE buses
+            SET lat = :lat,
+                lon = :lon,
+                speed = :speed,
+                current_occupancy = :occ,
+                last_updated = NOW()
+            WHERE bus_number = :bid
+        """), {
+            "lat": data.lat,
+            "lon": data.lon,
+            "speed": data.speed,
+            "occ": data.passenger_count,
+            "bid": data.bus_id
+        })
+        db.commit()
+    except Exception as e:
+        print(f"⚠️ Bus snapshot update failed: {e}")
+
+    # -------------------------------------------------
+    # SAVE HISTORY (ETM EVENTS)
+    # -------------------------------------------------
     try:
         event = ETMEvent(
             bus_id=data.bus_id,
@@ -102,9 +137,11 @@ async def update_location(
         db.add(event)
         db.commit()
     except Exception as e:
-        print(f"⚠️ Database Warning (ignored): {e}")
+        print(f"⚠️ ETM history save failed: {e}")
 
-    # ---------------- WEBSOCKET PAYLOAD ----------------
+    # -------------------------------------------------
+    # WEBSOCKET BROADCAST
+    # -------------------------------------------------
     payload = jsonable_encoder(data)
     payload.update({
         "status_text": status_text,
@@ -112,7 +149,6 @@ async def update_location(
         "alerts": alerts
     })
 
-    # ---------------- BROADCAST ----------------
     background_tasks.add_task(manager.broadcast, payload)
 
     return {
