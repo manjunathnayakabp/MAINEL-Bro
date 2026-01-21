@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from jose import jwt, JWTError
 from pydantic import BaseModel
 from datetime import datetime
-import random
 
 from app.database import get_db
 from app.models.bus import Bus
@@ -20,18 +20,13 @@ ALGORITHM = "HS256"
 DEMO_TOKEN = "mock_token_for_demo"
 
 # =====================================================
-# ADMIN AUTH (DEMO + REAL)
+# ADMIN AUTH
 # =====================================================
 def admin_required(token: str):
-    # 🔓 DEMO BACKDOOR (for frontend testing)
+    # 🔓 Demo backdoor
     if token == DEMO_TOKEN:
-        return {
-            "role": "admin",
-            "user": "Demo Admin",
-            "mode": "demo"
-        }
+        return {"role": "admin", "user": "Demo Admin", "mode": "demo"}
 
-    # 🔒 REAL JWT SECURITY
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("role") != "admin":
@@ -42,7 +37,7 @@ def admin_required(token: str):
 
 
 # =====================================================
-# ADMIN DASHBOARD (AUTH CHECK)
+# DASHBOARD CHECK
 # =====================================================
 @router.get("/dashboard")
 def admin_dashboard(token: str):
@@ -51,98 +46,161 @@ def admin_dashboard(token: str):
 
 
 # =====================================================
-# ADMIN FLEET STATS (REAL DB KPIs)
+# FLEET KPIs
 # =====================================================
 @router.get("/fleet-stats")
-def get_fleet_stats(
-    token: str,
-    db: Session = Depends(get_db)
-):
+def get_fleet_stats(token: str, db: Session = Depends(get_db)):
     admin_required(token)
 
-    total_buses = db.query(Bus).count()
-    total_routes = db.query(Route).count()
-    active_buses = db.query(ETMEvent.bus_id).distinct().count()
-
     return {
-        "total_buses": total_buses,
-        "total_routes": total_routes,
-        "active_buses": active_buses,
+        "total_buses": db.query(Bus).count(),
+        "total_routes": db.query(Route).count(),
+        "active_buses": db.query(ETMEvent.bus_id).distinct().count(),
         "system_health": "Good"
     }
 
 
 # =====================================================
-# ANALYTICS (CHART DATA FOR ADMIN DASHBOARD)
+# ANALYTICS (CHART DATA)
 # =====================================================
 @router.get("/analytics")
 def get_analytics(token: str):
     admin_required(token)
 
-    # 1. Delays per Hour (00 → 23)
-    # Peaks around 9 AM & 6 PM
-    delays_per_hour = [
-        2, 1, 0, 0, 1, 5, 12, 25, 40, 30, 15, 10,
-        10, 12, 15, 28, 45, 50, 35, 20, 10, 5, 3, 2
-    ]
-
-    # 2. Passenger Demand (Last 7 Days)
-    passenger_trends = [450, 520, 480, 600, 750, 300, 250]
-    days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-
     return {
-        "delays": delays_per_hour,
-        "passengers": passenger_trends,
-        "labels": days
+        "delays": [
+            2, 1, 0, 0, 1, 5, 12, 25, 40, 30, 15, 10,
+            10, 12, 15, 28, 45, 50, 35, 20, 10, 5, 3, 2
+        ],
+        "passengers": [450, 520, 480, 600, 750, 300, 250],
+        "labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     }
 
 
 # =====================================================
-# ALERT RESOLUTION (ADMIN ACTION)
+# ALLOCATION SYSTEM
 # =====================================================
 class AllocationRequest(BaseModel):
+    route_id: int
+    bus_id: str
+    driver_id: int
+
+
+# --- Crowded Routes (Demo logic) ---
+@router.get("/crowded-routes")
+def get_crowded_routes(db: Session = Depends(get_db)):
+    return db.execute(text("""
+        SELECT id, route_code, source, destination
+        FROM routes
+        WHERE is_active = true
+        LIMIT 2
+    """)).fetchall()
+
+
+# --- Idle Buses & Drivers ---
+@router.get("/idle-resources")
+def get_idle_resources(db: Session = Depends(get_db)):
+    buses = db.execute(text("""
+        SELECT bus_number, capacity
+        FROM buses
+        WHERE bus_status = 'IDLE' AND is_active = true
+    """)).fetchall()
+
+    drivers = db.execute(text("""
+        SELECT id, name
+        FROM users
+        WHERE role = 'DRIVER' AND driver_status = 'IDLE'
+    """)).fetchall()
+
+    return {
+        "buses": [{"id": b[0], "capacity": b[1]} for b in buses],
+        "drivers": [{"id": d[0], "name": d[1]} for d in drivers]
+    }
+
+
+# --- Allocate Bus & Driver ---
+@router.post("/allocate")
+def allocate_bus(req: AllocationRequest, db: Session = Depends(get_db)):
+    db.execute(
+        text("UPDATE buses SET bus_status='ON_ROUTE' WHERE bus_number=:b"),
+        {"b": req.bus_id}
+    )
+
+    db.execute(
+        text("UPDATE users SET driver_status='ON_DUTY' WHERE id=:d"),
+        {"d": req.driver_id}
+    )
+
+    route_code = db.execute(
+        text("SELECT route_code FROM routes WHERE id=:r"),
+        {"r": req.route_id}
+    ).scalar()
+
+    message = (
+        f"URGENT: Assigned to Route {route_code} "
+        f"with Bus {req.bus_id}. Start immediately."
+    )
+
+    db.execute(text("""
+        INSERT INTO notifications (user_id, message, created_at)
+        VALUES (:u, :m, NOW())
+    """), {"u": req.driver_id, "m": message})
+
+    db.commit()
+    return {"status": "Allocated", "message": "Driver notified"}
+
+
+# =====================================================
+# ALERT RESOLUTION (ADMIN ACTIONS)
+# =====================================================
+class ResolveAlertRequest(BaseModel):
     bus_id: str
     route_id: str
-    action_type: str  # DEPLOY_SPARE, REROUTE, HOLD
+    action_type: str  # DEPLOY_SPARE | REROUTE | HOLD
 
 
-# In-memory audit log (replace with DB later)
 action_logs = []
 
 
 @router.post("/resolve-alert")
-def resolve_alert(
-    request: AllocationRequest,
-    token: str
-):
+def resolve_alert(req: ResolveAlertRequest, token: str):
     admin = admin_required(token)
 
-    log_entry = {
+    log = {
         "timestamp": datetime.now().isoformat(),
-        "admin": admin.get("user", "ADMIN_USER"),
-        "action": request.action_type,
-        "bus_id": request.bus_id,
-        "route_id": request.route_id,
+        "admin": admin.get("user"),
+        "action": req.action_type,
+        "bus_id": req.bus_id,
+        "route_id": req.route_id,
         "status": "EXECUTED"
     }
-
-    action_logs.append(log_entry)
-
-    print(
-        f"🔧 ADMIN ACTION: {request.action_type} | "
-        f"Bus: {request.bus_id} | Route: {request.route_id}"
-    )
+    action_logs.append(log)
 
     return {
-        "message": f"Action '{request.action_type}' executed successfully",
+        "message": f"Action '{req.action_type}' executed",
         "log_id": len(action_logs)
     }
 
 
 # =====================================================
-# ACTION LOGS (AUDIT TRAIL)
+# AUDIT LOGS
 # =====================================================
 @router.get("/action-logs")
 def get_action_logs(token: str):
     admin_required(token)
     return action_logs
+
+
+# =====================================================
+# DRIVER NOTIFICATIONS
+# =====================================================
+@router.get("/notifications/{user_id}")
+def get_notifications(user_id: int, db: Session = Depends(get_db)):
+    results = db.execute(text("""
+        SELECT message, created_at FROM notifications 
+        WHERE user_id = :u AND is_read = false 
+        ORDER BY created_at DESC
+    """), {"u": user_id}).fetchall()
+    
+    # FIX: Convert the "Row" objects to a simple list of [message, timestamp]
+    return [[row[0], row[1]] for row in results]

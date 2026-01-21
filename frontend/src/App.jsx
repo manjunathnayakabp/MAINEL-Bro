@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// --- IMPORT YOUR PAGES ---
+// ================= IMPORT PAGES =================
 import Login from './pages/Login';
 import LiveTracking from './pages/LiveTracking';
 import TripPlanner from './pages/TripPlanner';
-import ManualETM from './pages/ManualETM'; 
-import AdminDashboard from './pages/AdminDashboard'; // IMPORT NEW PAGE
+import ManualETM from './pages/ManualETM';
+import AdminDashboard from './pages/AdminDashboard';
+import BusAllocation from './pages/BusAllocation';
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. Check Login Status
+  // =================================================
+  // 1. CHECK LOGIN STATUS ON PAGE LOAD
+  // =================================================
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -21,94 +24,120 @@ function App() {
     setLoading(false);
   }, []);
 
-  // 2. Logout
+  // =================================================
+  // 2. LOGOUT
+  // =================================================
   const handleLogout = () => {
     localStorage.removeItem('user');
     setUser(null);
-    window.location.href = '/'; 
+    window.location.href = '/';
   };
 
-  if (loading) return <div style={{padding:'20px'}}>Loading...</div>;
+  if (loading) {
+    return <div style={{ padding: '20px' }}>Loading...</div>;
+  }
 
-  // Helper to safely check roles (Case Insensitive)
+  // Role helper (case-insensitive safe)
   const isRole = (role) => user?.role?.toUpperCase() === role;
 
   return (
     <Router>
-      {/* --- NAVBAR --- */}
+      {/* ================= NAVBAR ================= */}
       {user && (
         <nav style={navStyles.nav}>
           <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
-            🚌 Moovit-Chalo <span style={navStyles.roleBadge}>{user.role}</span>
+            🚌 BUS KAR BAHI 
+            <span style={navStyles.roleBadge}>{user.role}</span>
           </div>
-          
+
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-            
-            {/* ADMIN LINK */}
+            {/* ADMIN */}
             {isRole('ADMIN') && (
               <a href="/admin" style={navStyles.link}>Dashboard</a>
             )}
 
-            {/* TRIP PLANNER: User & Admin */}
+            {/* USER + ADMIN */}
             {(isRole('USER') || isRole('ADMIN')) && (
               <a href="/plan" style={navStyles.link}>Trip Planner</a>
             )}
 
-            {/* LIVE MAP: Everyone */}
+            {/* EVERYONE */}
             <a href="/track" style={navStyles.link}>Live Map</a>
-            
-            {/* DRIVER CONSOLE: Driver Only */}
+
+            {/* DRIVER */}
             {isRole('DRIVER') && (
-              <a href="/etm" style={navStyles.driverLink}>🎮 Driver Console</a>
+              <a href="/etm" style={navStyles.driverLink}>
+                🎮 Driver Console
+              </a>
             )}
 
-            <button onClick={handleLogout} style={navStyles.logoutBtn}>Logout</button>
+            <button onClick={handleLogout} style={navStyles.logoutBtn}>
+              Logout
+            </button>
           </div>
         </nav>
       )}
 
-      {/* --- ROUTES --- */}
+      {/* ================= ROUTES ================= */}
       <Routes>
-        
-        {/* Not Logged In? -> Login Page */}
+        {/* NOT LOGGED IN */}
         {!user ? (
           <Route path="*" element={<Login />} />
         ) : (
           <>
-            {/* --- DEFAULT REDIRECTS (The Logic You Wanted) --- */}
-            <Route path="/" element={
-               isRole('DRIVER') ? <Navigate to="/etm" /> : 
-               isRole('ADMIN')  ? <Navigate to="/admin" /> : 
-               <Navigate to="/plan" />
-            } />
-            
-            {/* --- PROTECTED ROUTES --- */}
+            {/* -------- DEFAULT REDIRECT -------- */}
+            <Route
+              path="/"
+              element={
+                isRole('DRIVER') ? <Navigate to="/etm" /> :
+                isRole('ADMIN')  ? <Navigate to="/admin" /> :
+                <Navigate to="/plan" />
+              }
+            />
 
-            {/* Admin Dashboard: Only Admin */}
-            <Route path="/admin" element={
-              isRole('ADMIN') ? <AdminDashboard /> : <Navigate to="/" />
-            } />
+            {/* -------- ADMIN ONLY -------- */}
+            <Route
+              path="/admin"
+              element={
+                isRole('ADMIN') ? <AdminDashboard /> : <Navigate to="/" />
+              }
+            />
 
-            {/* Plan: User & Admin */}
-            <Route path="/plan" element={
-              (isRole('USER') || isRole('ADMIN')) ? <TripPlanner /> : <Navigate to="/" />
-            } />
+            <Route
+              path="/allocate"
+              element={
+                isRole('ADMIN') ? <BusAllocation /> : <Navigate to="/" />
+              }
+            />
 
-            {/* Track: Everyone */}
+            {/* -------- USER + ADMIN -------- */}
+            <Route
+              path="/plan"
+              element={
+                (isRole('USER') || isRole('ADMIN'))
+                  ? <TripPlanner />
+                  : <Navigate to="/" />
+              }
+            />
+
+            {/* -------- EVERYONE -------- */}
             <Route path="/track" element={<LiveTracking />} />
 
-            {/* ETM: Only Driver */}
-            <Route path="/etm" element={
-              isRole('DRIVER') ? <ManualETM /> : <Navigate to="/" />
-            } />
+            {/* -------- DRIVER ONLY -------- */}
+            <Route
+              path="/etm"
+              element={
+                isRole('DRIVER') ? <ManualETM /> : <Navigate to="/" />
+              }
+            />
           </>
         )}
-
       </Routes>
     </Router>
   );
 }
 
+// ================= STYLES =================
 const navStyles = {
   nav: {
     padding: '15px 30px',
@@ -124,8 +153,7 @@ const navStyles = {
     background: 'rgba(255,255,255,0.2)',
     padding: '2px 6px',
     borderRadius: '4px',
-    marginLeft: '10px',
-    verticalAlign: 'middle'
+    marginLeft: '10px'
   },
   link: {
     color: 'white',
@@ -141,8 +169,7 @@ const navStyles = {
     fontWeight: 'bold',
     border: '1px solid #f1c40f',
     padding: '5px 10px',
-    borderRadius: '5px',
-    cursor: 'pointer'
+    borderRadius: '5px'
   },
   logoutBtn: {
     background: '#e74c3c',

@@ -1,15 +1,19 @@
+import os
 import time
 import requests
 import random
 import threading
 from datetime import datetime
 from sqlalchemy import create_engine, text
-
-# =====================================================
+import os  
+#==================
 # CONFIGURATION
 # =====================================================
-API_URL = "http://127.0.0.1:8000/buses/update-location"
-DATABASE_URL = "postgresql://postgres:Manju%401234@localhost:5432/moovit_chalo"
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000/buses/update-location")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", 
+    "postgresql://postgres:Manju%401234@localhost:5432/moovit_chalo"
+)
 
 BUS_CAPACITY = 50
 SPEED_FACTOR = 2

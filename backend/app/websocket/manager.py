@@ -10,7 +10,7 @@ class ConnectionManager:
         await websocket.accept()
         self.active_connections.append(websocket)
         print(f"🔌 New Client Connected. Total: {len(self.active_connections)}")
-        await websocket.send_json({"message": "Connected to MOOVIT-CHALO WebSocket"})
+        await websocket.send_json({"message": "Connected to BUS KAR BAHI  WebSocket"})
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)

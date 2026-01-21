@@ -20,7 +20,7 @@ from app.routes import trip_planner
 # App Initialization
 # --------------------------------------------------
 app = FastAPI(
-    title="MOOVIT-CHALO Intelligent Transport System",
+    title="BUS KAR BAHI  Intelligent Transport System",
     version="1.0"
 )
 

@@ -1,47 +1,74 @@
 import React, { useState, useEffect } from 'react';
 
-// ⚠️ CHANGE THIS TO YOUR BACKEND IP
-const API_BASE = 'http://10.103.20.36:8000';
+// =====================================================
+// AUTO-DETECT BACKEND (Mobile + Laptop Friendly)
+// =====================================================
+const PROTOCOL = window.location.protocol;
+const HOST = window.location.hostname;
+const PORT = '8000';
+const API_BASE = `${PROTOCOL}//${HOST}:${PORT}`;
 
 const ManualETM = () => {
-  // Lists from DB
+
+  // =====================================================
+  // ADMIN → DRIVER ALERT
+  // =====================================================
+  const [alert, setAlert] = useState(null);
+
+  // =====================================================
+  // DATA LISTS
+  // =====================================================
   const [busList, setBusList] = useState([]);
   const [routeList, setRouteList] = useState([]);
   const [stopsList, setStopsList] = useState([]);
 
-  // Selections
+  // =====================================================
+  // SELECTIONS
+  // =====================================================
   const [busId, setBusId] = useState('');
   const [routeId, setRouteId] = useState('');
 
-  // Trip State
+  // =====================================================
+  // TRIP STATE
+  // =====================================================
   const [isStarted, setIsStarted] = useState(false);
   const [currentStop, setCurrentStop] = useState('Depot');
   const [occupancy, setOccupancy] = useState(0);
   const [lastLog, setLastLog] = useState('Ready to start...');
+  const [statusMsg, setStatusMsg] = useState('Connecting...');
 
-  // Ticketing
+  // =====================================================
+  // TICKETING
+  // =====================================================
   const [destStop, setDestStop] = useState('');
   const [ticketCount, setTicketCount] = useState(1);
 
-  // --------------------------------------------------
-  // 1. Load Initial Config (Buses & Routes)
-  // --------------------------------------------------
+  // =====================================================
+  // 1. LOAD CONFIG (BUSES + ROUTES)
+  // =====================================================
   useEffect(() => {
+    setStatusMsg(`Connecting to ${API_BASE}...`);
+
     fetch(`${API_BASE}/etm/config`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error("Backend not reachable");
+        return res.json();
+      })
       .then(data => {
         setBusList(data.buses);
         setRouteList(data.routes);
 
         if (data.buses.length > 0) setBusId(data.buses[0]);
         if (data.routes.length > 0) setRouteId(data.routes[0].id);
+
+        setStatusMsg("✅ System Online");
       })
-      .catch(() => alert("❌ Backend not reachable"));
+      .catch(err => setStatusMsg(`❌ ${err.message}`));
   }, []);
 
-  // --------------------------------------------------
-  // 2. Load Stops When Route Changes
-  // --------------------------------------------------
+  // =====================================================
+  // 2. LOAD STOPS ON ROUTE CHANGE
+  // =====================================================
   useEffect(() => {
     if (!routeId) return;
 
@@ -53,9 +80,30 @@ const ManualETM = () => {
       });
   }, [routeId]);
 
-  // --------------------------------------------------
-  // API Helper
-  // --------------------------------------------------
+  // =====================================================
+  // 3. ADMIN ALERT POLLING (EVERY 5s)
+  // =====================================================
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user) return;
+
+    const interval = setInterval(() => {
+      fetch(`${API_BASE}/admin/notifications/${user.id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.length > 0) {
+            setAlert(data[0][0]);
+          }
+        })
+        .catch(() => {});
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // =====================================================
+  // API HELPER
+  // =====================================================
   const apiCall = async (endpoint, body) => {
     try {
       const res = await fetch(`${API_BASE}/etm/${endpoint}`, {
@@ -65,21 +113,35 @@ const ManualETM = () => {
       });
       return await res.json();
     } catch {
+      alert("❌ Connection Error");
       return null;
     }
   };
 
-  // --------------------------------------------------
+  // =====================================================
   // ACTION HANDLERS
-  // --------------------------------------------------
+  // =====================================================
   const handleStart = async () => {
-    setLastLog("Initializing...");
+    if (!busId || !routeId) return alert("Select Bus & Route");
+
     const res = await apiCall('start', { bus_id: busId, route_id: routeId });
     if (res) {
       setIsStarted(true);
-      setCurrentStop('Trip Started');
+      setCurrentStop(res.start_stop || 'Trip Started');
       setOccupancy(0);
-      setLastLog(`✅ Trip Active: ${busId}`);
+      setLastLog(`✅ Trip Started (${busId})`);
+    }
+  };
+
+  const handleNextStop = async () => {
+    const res = await apiCall('move-next', { bus_id: busId, route_id: routeId });
+
+    if (res?.status === "End of Route") {
+      handleEndTrip();
+    } else if (res) {
+      setCurrentStop(res.current_stop);
+      setOccupancy(res.occupancy);
+      setLastLog(`📍 Arrived at ${res.current_stop}`);
     }
   };
 
@@ -87,115 +149,95 @@ const ManualETM = () => {
     const res = await apiCall('issue-ticket', {
       bus_id: busId,
       route_id: routeId,
-      source_stop: currentStop,
       dest_stop: destStop,
       count: ticketCount
     });
+
     if (res) {
-      setOccupancy(prev => prev + ticketCount);
-      setLastLog(`🎟️ Ticket Issued (+${ticketCount})`);
-    }
-  };
-
-  const handleNextStop = async () => {
-    setLastLog("🚌 Moving to next stop...");
-    const res = await apiCall('move-next', { bus_id: busId, route_id: routeId });
-
-    if (res?.status === "End of Route") {
-      alert("🏁 Route Completed");
-      setIsStarted(false);
-      setCurrentStop('Depot');
-      setOccupancy(0);
-      setLastLog("Trip Finished");
-    } else if (res) {
-      setCurrentStop(res.current_stop);
-      setOccupancy(res.occupancy);
-      setLastLog(`📍 Arrived at ${res.current_stop} (-${res.deboarded})`);
+      setOccupancy(o => o + ticketCount);
+      setLastLog(`🎟️ Issued ${ticketCount} Ticket(s)`);
+      setTicketCount(1);
     }
   };
 
   const handleEndTrip = async () => {
-    if (!window.confirm("End trip and return bus to Auto-Pilot?")) return;
+    if (!window.confirm("End Trip?")) return;
 
     await apiCall('end', { bus_id: busId, route_id: routeId });
 
     setIsStarted(false);
-    setOccupancy(0);
     setCurrentStop('Depot');
-    setLastLog("Trip Ended. Bus returned to Simulator.");
+    setOccupancy(0);
+    setLastLog("🏁 Trip Ended");
   };
 
-  // --------------------------------------------------
+  // =====================================================
   // UI
-  // --------------------------------------------------
+  // =====================================================
   return (
-    <div style={{ fontFamily: 'sans-serif', background: '#f0f2f5', minHeight: '100vh', padding: '15px' }}>
+    <div style={{ fontFamily: 'sans-serif', background: '#f0f2f5', minHeight: '100vh', padding: 15 }}>
 
-      {/* Header */}
-      <div style={{ background: '#2c3e50', color: 'white', padding: '15px', borderRadius: '10px', marginBottom: '20px' }}>
-        <h2 style={{ margin: 0 }}>🚌 ETM Console</h2>
-        <small>Connected to: {API_BASE}</small>
+      {/* 🔔 ADMIN ALERT */}
+      {alert && (
+        <div style={{
+          background: '#d63031',
+          color: 'white',
+          padding: 15,
+          textAlign: 'center',
+          fontWeight: 'bold',
+          borderRadius: 6,
+          marginBottom: 10
+        }}>
+          🔔 ADMIN ALERT: {alert}
+        </div>
+      )}
+
+      {/* HEADER */}
+      <div style={{ background: '#2c3e50', color: 'white', padding: 15, borderRadius: 10, marginBottom: 20 }}>
+        <h2 style={{ margin: 0 }}>🚌 Driver Console</h2>
+        <small>{statusMsg}</small>
       </div>
 
       {!isStarted ? (
-        /* START SCREEN */
         <div style={styles.card}>
-          <h3>🚩 Start New Trip</h3>
+          <h3>🚩 Start Trip</h3>
 
-          <label style={styles.label}>Bus</label>
+          <label>Bus</label>
           <select style={styles.select} value={busId} onChange={e => setBusId(e.target.value)}>
             {busList.map(b => <option key={b} value={b}>{b}</option>)}
           </select>
 
-          <label style={styles.label}>Route</label>
+          <label>Route</label>
           <select style={styles.select} value={routeId} onChange={e => setRouteId(e.target.value)}>
             {routeList.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
 
-          <button onClick={handleStart} style={styles.btnStart}>START TRIP ▶</button>
+          <button style={styles.btnStart} onClick={handleStart}>START ▶</button>
         </div>
       ) : (
-        /* ACTIVE TRIP */
         <>
           <div style={styles.card}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div>
-                <small>Current Stop</small>
-                <h3>{currentStop}</h3>
-              </div>
-              <div>
-                <small>Occupancy</small>
-                <h2>{occupancy}</h2>
-              </div>
-            </div>
-
-            <div style={styles.infoBox}>ℹ {lastLog}</div>
-
-            <button onClick={handleEndTrip} style={styles.btnEnd}>
-              END TRIP ✕
-            </button>
+            <h3>{currentStop}</h3>
+            <p>👥 Passengers: {occupancy}</p>
+            <div style={styles.info}>{lastLog}</div>
+            <button style={styles.btnEnd} onClick={handleEndTrip}>END TRIP ✕</button>
           </div>
 
-          <button onClick={handleNextStop} style={styles.btnNext}>
-            ARRIVE NEXT STOP ➡
-          </button>
+          <button style={styles.btnNext} onClick={handleNextStop}>NEXT STOP ➡</button>
 
           <div style={{ ...styles.card, marginTop: 20 }}>
-            <h3>🎟️ Issue Ticket</h3>
-
-            <label style={styles.label}>Destination</label>
+            <h3>🎟️ Ticket</h3>
             <select style={styles.select} value={destStop} onChange={e => setDestStop(e.target.value)}>
               {stopsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
 
-            <label style={styles.label}>Passengers</label>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button style={styles.btnCounter} onClick={() => setTicketCount(Math.max(1, ticketCount - 1))}>-</button>
-              <div style={styles.counterBox}>{ticketCount}</div>
-              <button style={styles.btnCounter} onClick={() => setTicketCount(ticketCount + 1)}>+</button>
+              <button onClick={() => setTicketCount(Math.max(1, ticketCount - 1))}>-</button>
+              <div style={styles.counter}>{ticketCount}</div>
+              <button onClick={() => setTicketCount(ticketCount + 1)}>+</button>
             </div>
 
-            <button onClick={handleIssueTicket} style={styles.btnTicket}>PRINT TICKET 🖨️</button>
+            <button style={styles.btnTicket} onClick={handleIssueTicket}>PRINT 🖨️</button>
           </div>
         </>
       )}
@@ -203,17 +245,16 @@ const ManualETM = () => {
   );
 };
 
+// =====================================================
 const styles = {
   card: { background: 'white', padding: 20, borderRadius: 12 },
-  label: { fontWeight: 'bold', marginTop: 10 },
   select: { width: '100%', padding: 10, marginBottom: 10 },
-  btnStart: { width: '100%', padding: 15, background: '#27ae60', color: 'white', fontSize: 18 },
+  btnStart: { width: '100%', padding: 15, background: '#27ae60', color: 'white' },
   btnNext: { width: '100%', padding: 18, background: '#2980b9', color: 'white', marginTop: 15 },
   btnEnd: { marginTop: 10, background: '#e74c3c', color: 'white', padding: 10, width: '100%' },
-  btnCounter: { width: 50, fontSize: 20 },
   btnTicket: { width: '100%', padding: 15, background: '#8e44ad', color: 'white', marginTop: 10 },
-  counterBox: { flex: 1, textAlign: 'center', fontSize: 20, padding: 10, background: '#f9f9f9' },
-  infoBox: { marginTop: 10, background: '#e1f5fe', padding: 10 }
+  info: { marginTop: 10, background: '#e1f5fe', padding: 10 },
+  counter: { flex: 1, textAlign: 'center', fontSize: 20 }
 };
 
 export default ManualETM;

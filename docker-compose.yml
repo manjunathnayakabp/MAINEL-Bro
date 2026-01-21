@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # 1. DATABASE SERVICE (Cloud Database)
+  db:
+    image: postgres:15
+    container_name: cloud_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password  # Simple password for the container DB
+      POSTGRES_DB: moovit_chalo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - cloud-net
+
+  # 2. BACKEND API SERVICE
+  backend:
+    build: ./backend
+    container_name: cloud_backend
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    environment:
+      # Connect to 'db' container instead of localhost
+      DATABASE_URL: postgresql://postgres:password@db:5432/moovit_chalo
+    networks:
+      - cloud-net
+
+  # 3. FRONTEND UI SERVICE
+  frontend:
+    build: ./frontend
+    container_name: cloud_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    networks:
+      - cloud-net
+
+  # 4. SIMULATOR SERVICE (IoT Device Simulation)
+  simulator:
+    build: ./backend
+    container_name: cloud_simulator
+    depends_on:
+      - backend
+      - db
+    # Override default command to run the script
+    command: ["python", "app/services/etm_simulator.py"]
+    environment:
+      # Talk to backend container via internal network
+      API_URL: http://backend:8000/buses/update-location
+      DATABASE_URL: postgresql://postgres:password@db:5432/moovit_chalo
+    networks:
+      - cloud-net
+
+# Persistent Storage
+volumes:
+  postgres_data:
+
+# Private Cloud Network
+networks:
+  cloud-net:
+    driver: bridge

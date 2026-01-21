@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
+
   const [stats, setStats] = useState({ total: 0, active: 0, routes: 0 });
   const [fleet, setFleet] = useState({});
   const [alerts, setAlerts] = useState([]);
@@ -12,7 +14,6 @@ const AdminDashboard = () => {
   // 1. LOAD STATS + ANALYTICS
   // ===================================================
   useEffect(() => {
-    // Temporary mock stats (replace later with /admin/fleet-stats)
     setStats({ total: 5, active: 1, routes: 2 });
 
     fetch('http://127.0.0.1:8000/admin/analytics?token=mock_token_for_demo')
@@ -22,7 +23,7 @@ const AdminDashboard = () => {
   }, []);
 
   // ===================================================
-  // 2. WEBSOCKET – LIVE FLEET + ALERTS
+  // 2. LIVE WEBSOCKET UPDATES
   // ===================================================
   useEffect(() => {
     const ws = new WebSocket('ws://127.0.0.1:8000/ws/tracking');
@@ -30,7 +31,7 @@ const AdminDashboard = () => {
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
-      // Update fleet
+      // Update fleet table
       setFleet(prev => ({
         ...prev,
         [data.bus_id]: {
@@ -39,7 +40,7 @@ const AdminDashboard = () => {
         }
       }));
 
-      // Update alerts (keep latest 5)
+      // Update alerts (max 5)
       if (data.alerts && data.alerts.length > 0) {
         setAlerts(prev => [...data.alerts, ...prev].slice(0, 5));
       }
@@ -97,6 +98,20 @@ const AdminDashboard = () => {
         <Card title="Total Fleet" value={stats.total} color="#3498db" />
         <Card title="Active Buses" value={Object.keys(fleet).length} color="#2ecc71" />
         <Card title="Critical Delays" value={delayedCount} color="#e74c3c" />
+      </div>
+
+      {/* ================= SURGE CONTROL ================= */}
+      <div style={{ display: 'flex', gap: 20, marginBottom: 30 }}>
+        <div style={styles.card}>
+          <h3>⚡ Surge Control</h3>
+          <p>Crowd alert detected on Route 1.</p>
+          <button
+            style={{ ...styles.btn, background: '#e74c3c' }}
+            onClick={() => navigate('/allocate?routeId=1')}
+          >
+            ⚠️ Allocate Bus
+          </button>
+        </div>
       </div>
 
       {/* ================= MAIN LAYOUT ================= */}
@@ -241,5 +256,23 @@ const Card = ({ title, value, color }) => (
     <div style={{ fontSize: 32, fontWeight: 'bold' }}>{value}</div>
   </div>
 );
+
+const styles = {
+  card: {
+    background: 'white',
+    padding: 20,
+    borderRadius: 8,
+    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+    flex: 1
+  },
+  btn: {
+    border: 'none',
+    padding: '10px 15px',
+    color: 'white',
+    fontWeight: 'bold',
+    borderRadius: 5,
+    cursor: 'pointer'
+  }
+};
 
 export default AdminDashboard;

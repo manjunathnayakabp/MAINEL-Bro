@@ -73,7 +73,7 @@ const Login = () => {
         {/* Header Section */}
         <div style={styles.header}>
           <div style={{fontSize: '40px', marginBottom: '10px'}}>🚍</div>
-          <h2 style={{ margin: 0, color: '#2c3e50' }}>Moovit-Chalo</h2>
+          <h2 style={{ margin: 0, color: '#2c3e50' }}>BUS KAR BAHI </h2>
           <p style={{ color: '#7f8c8d', margin: '5px 0' }}>
             {isLogin ? "Welcome Back, Traveler!" : "Join the Smart Transit Network"}
           </p>

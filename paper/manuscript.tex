@@ -1,0 +1,284 @@
+
+V semester 
+Experiential Learning Report on SDG - 9
+THEME :  AIML
+
+Predicting Public Transportation Delay
+
+Student(s)
+USN
+Name
+1RV23CS129
+MANJUNATH NAYAKA B P
+1RV23IS090
+PRATHAM BADDUR
+1RV23CS171
+PRAJWAL L ROODAGI
+1RV23IS092
+PUNEETH KUMAR K M
+1RV23CS145
+NAMITA HIREMATH
+
+
+Mentor
+Name, Designation & Department
+Dr. Karanam Suni
+Assistant Professor
+Department of CSE
+RV College of Engineering Bengaluru -560059
+
+
+2025-2026
+                                                                    CONTENTS
+Introduction ................................................................................................................................................................... 1
+Problem Definition .................................................................................................................................................... 3
+     Problem Statement .............................................................................................................................................. 3
+     Background Information (Literature Review) ..................................................................................... 4
+Objectives ........................................................................................................................................................................ 6
+     Primary Objectives .............................................................................................................................................. 6
+     Secondary Objectives ......................................................................................................................................... 7
+Methodology ................................................................................................................................................................. 8
+     Approach .................................................................................................................................................................... 8
+     Procedures .............................................................................................................................................................. 10
+Project Execution ..................................................................................................................................................... 13
+     Planning and Design ........................................................................................................................................ 13
+     Implementation ................................................................................................................................................... 14
+Tools and Techniques Used ................................................................................................................................ 17
+     Tools ........................................................................................................................................................................... 17
+     Techniques ............................................................................................................................................................. 18
+Results and Discussion ......................................................................................................................................... 21
+     Final Results .......................................................................................................................................................... 21
+     Discussion .............................................................................................................................................................. 22
+Prototype (Hardware / Software) ................................................................................................................... 24
+     Prototype Description ..................................................................................................................................... 24
+     Development Process ...................................................................................................................................... 25
+Conclusion ................................................................................................................................................................... 27
+     Summary ................................................................................................................................................................ 27
+     Personal Reflection …………………………………………………………………………………................................... 28
+Visuals ............................................................................................................................................................................. 31
+     System Architecture Diagram ..................................................................................................................... 31
+     Data Flow Diagram ........................................................................................................................................... 32
+     Web Application Screenshots ..................................................................................................................... 33
+QR Code of Demonstration Video .................................................................................................................. 35
+
+
+
+
+
+Introduction
+Public transportation forms the backbone of urban mobility; however, in many small to mid-sized cities, transit systems continue to suffer from unreliable schedules, overcrowding, and poor operational transparency. Unlike large metropolitan networks that can deploy costly GPS units, automated passenger counters, and proprietary fleet management systems, smaller municipalities operate under severe budget constraints and inconsistent ridership demand. This disparity often creates a vicious cycle—limited funding leads to inefficient operations, which in turn discourages ridership and further reduces revenue.
+To address these challenges, this project proposes a “Retrofit” Intelligent Transit System specifically designed for low-cost, low-infrastructure environments. Instead of relying on expensive, specialized hardware, the system leverages existing assets such as the driver’s smartphone and the Electronic Ticketing Machine (ETM) already deployed in buses. This retrofit approach enables modern transit intelligence without disrupting current operations or requiring major capital investment.
+The proposed system creates a seamless communication layer between passengers, drivers, and administrators. It provides real-time vehicle tracking, occupancy estimation derived from ticketing data, and dynamic resource allocation to adapt to unpredictable factors such as traffic congestion, variable dwell times, and fluctuating passenger demand. By transforming routinely collected operational data into actionable insights, the system enhances service reliability, improves passenger experience, and empowers transit authorities to make informed, data-driven decisions—ultimately fostering sustainable public transportation even in resource-constrained cities.
+
+
+
+
+
+
+Problem Definition
+Problem Statement: 
+In Tier-2 and Tier-3 cities, public bus transportation systems typically operate without real-time vehicle tracking or passenger occupancy visibility. This lack of digital transparency creates uncertainty for commuters—who are unable to determine bus arrival times or crowding levels—and limits the ability of transport authorities to effectively monitor fleet performance and service reliability.
+Most existing Intelligent Transport Systems (ITS) depend on expensive hardware installations, such as dedicated GPS modules and passenger-counting cameras. The high deployment and maintenance costs of these solutions make them financially impractical for smaller cities with constrained budgets and lower ridership volumes.
+The core problem addressed by this project is the absence of an affordable, reliable, and scalable intelligent transport solution capable of providing real-time bus location and seat availability information without requiring additional costly hardware. By leveraging software-driven approaches and existing operational infrastructure, the proposed system aims to bring smart transit capabilities to resource-constrained urban environments.
+
+
+Background Information: (literature review)
+Historically, Real-Time Passenger Information (RTPI) systems have depended on dedicated Automatic Vehicle Location (AVL) units and Automatic Passenger Counting (APC) sensors installed on every vehicle. While these hardware-centric architectures are effective in large metropolitan deployments, studies have shown that their installation, maintenance, and data transmission costs are prohibitive for Tier-2 and Tier-3 cities with limited financial and operational capacity.
+Earlier low-cost alternatives, such as SMS-based schedule dissemination, attempted to improve passenger information access but failed to incorporate real-world operational variability, including traffic congestion and bus dwell time—the duration for which a bus remains stationary at a stop to allow passenger boarding and alighting. Consequently, these systems provided static information that quickly became unreliable in dynamic urban conditions.
+Recent research and practical deployments indicate that crowdsourced mobility signals and electronic ticketing data can function as reliable proxies for traditional GPS and occupancy sensors. These data sources inherently capture vehicle movement patterns and passenger flow without requiring additional physical instrumentation. This project builds upon and operationalizes this insight by integrating ticketing-derived occupancy metrics and mobile-based location inputs to deliver real-time transit intelligence in a cost-effective and scalable manner.
+
+
+Objectives
+Primary Objectives:
+ Zero-Hardware Location Tracking
+ To design and implement a real-time vehicle location tracking mechanism that operates exclusively through the driver’s interface—such as a mobile application or Electronic Ticketing Machine (ETM)—thereby eliminating the need for dedicated external GPS hardware.
+Occupancy Awareness via Ticketing Data
+ To compute real-time bus crowding levels by analyzing ticketing transaction logs, including passenger boarding and alighting events, as a software-based alternative to physical passenger-counting sensors.
+Dynamic Fleet Reallocation
+ To enable transit administrators to identify high-demand and overcrowded routes in real time and dynamically reassign idle buses and drivers to these routes, improving service balance and overall fleet utilization.
+
+
+Secondary Objectives: 
+Smart Trip Planning
+ To provide passengers with an intelligent, multi-modal trip planning system that supports walking–bus–transfer combinations, while accounting for bus direction, route connectivity, and transfer feasibility to generate reliable end-to-end travel plans.
+Operational Visibility and Control
+ To deliver a comprehensive, real-time administrative dashboard that enables transport authorities to monitor fleet health, active and idle vehicles, route performance, and resource availability, thereby supporting data-driven operational decision-making.
+
+
+Methodology
+4.1 Approach: 
+   We adopt a Hybrid Simulation and Control Approach to balance real-world operational uncertainty with system-wide optimization. The proposed system is centered around a centralized backend server that continuously processes data streams from two complementary sources:
+Automated Simulation Layer – representing the expected behavior of the standard fleet based on predefined routes, schedules, and historical patterns.
+
+
+Manual Driver Input Layer – representing real-world interventions through live updates submitted via the driver’s interface (ETM or mobile application).
+
+
+This dual-input strategy enables the system to reconcile planned operations with on-ground realities such as traffic congestion, delays, and unplanned stoppages.
+The Retrofit Model
+The system follows a retrofit-first design philosophy, where the driver’s Electronic Ticketing Machine (ETM) is treated as the single source of truth for both vehicle location and passenger load. By leveraging ticket issuance timestamps and periodic location updates from the ETM or driver application, the system eliminates dependency on dedicated GPS or passenger-counting hardware, significantly reducing deployment and maintenance costs.
+Algorithmic Resource Management
+For operational decision-making, the Admin module employs a greedy resource allocation algorithm. The algorithm continuously matches “High-Demand” alerts—generated when occupancy thresholds or passenger wait times exceed predefined limits—with “Idle” or underutilized buses and drivers. This approach prioritizes rapid response and computational simplicity, making it suitable for real-time fleet management in resource-constrained environments.
+
+        4.2 Procedures:
+Database Architecture
+ A relational database schema was designed using PostgreSQL to model and maintain strong relationships among core entities, including Buses, Routes, Stops, Users (Drivers and Administrators), and Tickets. This structured design ensures data consistency, supports efficient querying for real-time operations, and enables scalable analytics for fleet performance and occupancy monitoring.
+Simulation Engine Development
+ To validate system behavior under realistic operating conditions, a multi-threaded simulation engine was developed in Python. The simulator autonomously models the movement of 30+ buses across predefined routes, generating synthetic location and timing updates to stress-test backend APIs, database throughput, and dashboard responsiveness.
+Manual Override Logic
+ A priority-based override mechanism was implemented to seamlessly integrate real-world intervention. Whenever a driver logs in or submits live updates through the ETM or mobile interface, the system immediately supersedes simulated data with manual input. This design accurately mimics real-world operations where human-driven events take precedence over automated assumptions.
+Algorithm Implementation
+ The trip planning module employs Haversine-distance-based path computation to estimate inter-stop distances and determine optimal multi-hop routes. In parallel, occupancy estimation logic derives real-time crowding levels from ticket issuance and deboarding records, enabling seat availability prediction without relying on physical passenger-counting sensors.
+
+Timeline:
+Phase
+Duration
+Key Activities
+Milestone
+1. Planning & Architecture
+Weeks 1-2
+• Defined core problem (unreliable transit) & approach (Retrofit software).
+• Selected Tech Stack (PERN) & Tools.
+• Designed PostgreSQL ER Diagram (Users, Buses, Routes, Stops).
+Database Schema Finalized & Hosted Locally.
+2. Core Backend & Simulation
+Weeks 3-5
+• Set up Python FastAPI environment & Authentication (JWT).
+• Seeded DB with Route/Stop coordinates.
+• Developed Multi-threaded Bus Simulator (etm_simulator.py).
+• Built Live Tracking APIs.
+30+ Virtual Buses Running concurrently in backend.
+3. Frontend Development
+Weeks 6-7
+• Initialized React app & integrated Leaflet Maps.
+• Implemented polling for real-time bus movement.
+• Built Driver ETM Console with "Manual Override" logic.
+• Connected ticketing data to occupancy color indicators.
+Hybrid Tracking System Live (Simulated + Manual buses).
+4. Advanced Features
+Weeks 8-9
+• Developed Graph Search & Haversine algorithms for Trip Planner.
+• Created Passenger UI with Autocomplete Search.
+• Solved "Reverse Route" logic bugs.
+• Built Admin Dashboard & Dynamic Resource Allocation logic.
+Intelligent Features Active (Planner & Allocation).
+5. Testing & Final Polish
+Weeks 10
+• Conducted End-to-End Testing (Admin Allocates $\rightarrow$ Driver Alerted).
+• Refined UI/UX (CSS styling, responsive design).
+• Prepared Project Report & Presentation.
+Project Ready for Demonstration.
+
+
+
+5. Project Execution
+5.1 Planning and Design: 
+The initial planning phase focused on identifying the key operational pain points affecting public bus systems in small and mid-sized cities. Through problem analysis and domain study, traffic congestion and dwell time variability—delays caused by passenger boarding and alighting at stops—were identified as the primary factors disrupting schedule reliability and fleet efficiency.
+Based on these insights, the system was designed to prioritize real-time responsiveness and operational flexibility. The database schema was structured to explicitly maintain driver_status and bus_status attributes, enabling continuous tracking of vehicle availability, operational state, and readiness. This design decision directly supports the system’s Dynamic Allocation capability, allowing administrators to rapidly identify idle resources and reassign them to high-demand routes when disruptions occur.
+By aligning data design with real-world operational challenges, the planning phase ensured that the system architecture remained both problem-driven and scalable, forming a strong foundation for intelligent fleet management without additional hardware dependencies.
+
+5.2 Implementation: 
+Backend Development
+ The backend was implemented using Python with FastAPI, chosen for its high-performance asynchronous capabilities and efficient handling of concurrent operations. This architecture supports simultaneous processing of multiple bus threads, real-time ticketing events, and location updates with minimal latency.
+Frontend Development
+ The frontend layer consists of three distinct React-based applications, each tailored to a specific stakeholder:
+Passenger Application: Enables real-time bus tracking, occupancy visualization, and smart trip planning.
+
+
+Driver Application (ETM Interface): Allows drivers to issue tickets, submit location updates, and report operational status.
+
+
+Admin Dashboard: Provides administrators with real-time analytics, demand alerts, fleet status, and dynamic resource allocation controls.
+
+
+System Integration and Real-Time Synchronization
+ All system components are tightly integrated through the backend API to ensure real-time data propagation. Whenever a ticket is issued through the Driver Application, the backend immediately recalculates bus occupancy and updates the visualization across both the Passenger App and Admin Dashboard. Occupancy levels are represented using a color-coded scheme—Green (low load) → Yellow (moderate load) → Red (high load)—enabling intuitive and instant crowding awareness for all stakeholders.
+
+
+6. Tools and Techniques Used
+6.1 Tools: 
+Frontend: React.js, Leaflet Maps (for visualization).
+Backend: Python FastAPI (for API endpoints and simulation threads).
+Database: PostgreSQL (for robust relational data management).
+Development: VS Code, PgAdmin, Postman (API Testing).
+        
+        6.2 Techniques:
+Mathematical Interpolation for Vehicle Movement
+ In the absence of a continuous GPS data stream, mathematical interpolation is employed to estimate smooth bus trajectories between successive stop coordinates. This approach simulates vehicle movement at one-second intervals, enabling realistic real-time visualization and ETA estimation without requiring high-frequency location updates.
+Haversine-Based Nearest Stop Detection
+ The Haversine formula is used to compute the great-circle distance between a passenger’s GPS coordinates and nearby bus stops. This allows the system to accurately identify the nearest stop for trip planning and real-time tracking, even over non-linear urban road geometries.
+Graph-Based Route Connectivity and Transfers
+ The trip planning module models the transit network as a graph, where stops represent nodes and route segments represent edges. A graph search algorithm is applied to identify feasible multi-hop journeys and route transfers, enabling efficient planning across interconnected routes.
+Lightweight Polling for Real-Time Updates
+ To maintain compatibility with low-bandwidth and resource-constrained environments, the frontend applications utilize short-interval HTTP polling to fetch real-time updates from the backend. This design avoids the overhead and infrastructure complexity of WebSocket-based communication while still delivering timely occupancy and location updates suitable for small-city deployments.
+
+
+
+
+
+
+
+7. Results and Discussion
+7.1 Final Results: 
+The final prototype successfully demonstrated the ability to simultaneously track more than 30 buses in real time, validating the scalability of the backend architecture and simulation engine.
+Arrival Time Forecasting
+ The system accurately predicts bus arrival times by incorporating traffic-related variables injected into the simulation environment. This confirms the effectiveness of the hybrid simulation and manual control model in handling dynamic urban conditions.
+Occupancy Estimation
+ Passenger ticketing data was effectively utilized to drive real-time crowdedness indicators. When the number of issued tickets exceeded 80% of the vehicle’s seating capacity, the corresponding bus icon dynamically transitioned to Red, clearly signaling high occupancy levels to both passengers and administrators.
+Dynamic Reallocation
+ The Admin interface successfully enabled the real-time reassignment of an idle bus to an overcrowded route. Upon reassignment, an instant notification was delivered to the designated driver’s interface, confirming seamless end-to-end coordination between administrative control and driver execution.
+
+
+        7.2 Discussion: 
+The results demonstrate that expensive, hardware-intensive infrastructure is not a prerequisite for building an effective intelligent transit system. By digitizing the ticketing process and leveraging transaction data already generated during normal operations, the system is able to derive reliable passenger occupancy information at virtually no additional cost. This software-driven approach replaces traditional passenger-counting sensors while maintaining operational accuracy.
+Furthermore, the dynamic reallocation mechanism directly addresses the long-standing issue of unreliable scheduling in small and mid-sized cities. By continuously identifying demand imbalances and reallocating buses from low-demand routes to overcrowded corridors in real time, the system maximizes fleet utilization and service reliability. This capability is particularly critical for cities operating with limited fleet sizes and constrained budgets, where efficient resource use has a direct impact on passenger satisfaction and system sustainability.
+
+8. Prototype (Hardware/Software)
+8.1 Prototype Description: 
+The prototype is a fully functional web-based ecosystem:
+Software Stack: PERN/Python Hybrid (Postgres, Express/Python, React, Node).
+Features: Live Map with colored occupancy indicators, Inter-connected Trip Planner, Driver ETM with digital ticketing, and Admin Crisis Management console.
+        8.2 Development Process: 
+A significant technical challenge arose in the implementation of the Trip Planner logic. The initial algorithm failed to identify valid return journeys due to sequence-order constraints, where the start stop sequence index was greater than the end stop sequence index (Start Sequence > End Sequence). This limitation caused the planner to incorrectly reject feasible trips when routes were traversed in the reverse direction.
+To address this issue, a Reverse Route Detection algorithm was introduced. The algorithm dynamically infers reverse-direction connectivity by validating stop sequences even when the database stores routes in a single (forward) direction only. This enhancement enables accurate trip planning for both outbound and return journeys without requiring duplicate route definitions, improving database efficiency and planner reliability.
+
+9. Conclusion
+9.1 Summary:
+This project demonstrates that small to mid-sized cities can modernize public transportation systems without significant infrastructure investment. By retrofitting existing operational workflows to leverage driver-side Electronic Ticketing Machines (ETMs) and ticketing transaction data, the system delivers real-time vehicle tracking, reliable occupancy estimation, and dynamic fleet management without the need for costly hardware installations.
+The proposed approach directly addresses the core challenges faced by resource-constrained transit agencies—namely service unreliability and lack of operational visibility. Through software-driven intelligence and adaptive resource allocation, the system transforms routinely generated data into actionable insights, enabling more responsive operations, improved passenger experience, and efficient utilization of limited fleets. These results highlight the feasibility and scalability of retrofit-based intelligent transit systems as a practical pathway toward equitable and sustainable urban mobility.
+9.2 Personal Reflection:
+
+ Working on the backend logic exposed me to the challenges of managing concurrent processes in a real-time system. Implementing the bus simulation engine helped me understand thread synchronization, while handling multiple user requests emphasized the importance of database locking and transactional consistency in preventing race conditions.
+ Developing the Trip Planner significantly strengthened my understanding of graph algorithms and pathfinding techniques. I learned that real-world transit data—such as stop sequences and route directions—is often inconsistent, requiring careful validation and edge-case handling beyond textbook algorithm implementations.
+ Designing the Admin Dashboard demonstrated the impact of data visualization in operational decision-making. Transforming raw backend data into clear, actionable insights—particularly through features like real-time alerts and the “Allocate Bus” action—was a key learning outcome for me.
+ Working on the Driver Application and ETM integration taught me how user-facing reliability directly affects system accuracy. I gained experience in designing intuitive workflows for drivers while ensuring that ticketing and location updates were captured efficiently and propagated across the system in real time.
+ Contributing to system integration and testing gave me a holistic view of how independent modules interact in a distributed system. I learned the importance of end-to-end testing, simulation-based validation, and handling real-world failures to ensure system robustness under load.
+
+
+
+
+
+
+
+
+
+
+
+10. Visuals: 
+System Architecture Diagram
+
+
+
+
+Data Flow Diagram
+
+
+
+Web App ScreenShots 
+
+
+
+
+
+
+11. QR Code of Demonstration Video
