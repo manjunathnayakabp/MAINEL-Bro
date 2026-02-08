@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, NavLink } from 'react-router-dom';
 
 // ================= IMPORT PAGES =================
 import Login from './pages/Login';
@@ -34,46 +34,59 @@ function App() {
   };
 
   if (loading) {
-    return <div style={{ padding: '20px' }}>Loading...</div>;
+    return <div className="page-container">Loading...</div>;
   }
 
   // Role helper (case-insensitive safe)
   const isRole = (role) => user?.role?.toUpperCase() === role;
+  const navClass = ({ isActive }) => `nav-link${isActive ? ' active' : ''}`;
+  const driverClass = ({ isActive }) => `driver-link${isActive ? ' active' : ''}`;
 
   return (
     <Router>
       {/* ================= NAVBAR ================= */}
       {user && (
-        <nav style={navStyles.nav}>
-          <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
-            🚌 BUS KAR BAHI 
-            <span style={navStyles.roleBadge}>{user.role}</span>
-          </div>
+        <nav className="modern-navbar">
+          <div className="navbar-content">
+            <div className="brand" aria-label="Bus Kar Bhai">
+              <span className="brand-icon" aria-hidden>
+                BK
+              </span>
+              <span className="brand-text">Bus Kar Bhai</span>
+              <span className="role-badge">{user.role}</span>
+            </div>
 
-          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-            {/* ADMIN */}
-            {isRole('ADMIN') && (
-              <a href="/admin" style={navStyles.link}>Dashboard</a>
-            )}
+            <div className="nav-links">
+              {/* ADMIN */}
+              {isRole('ADMIN') && (
+                <NavLink to="/admin" className={navClass}>
+                  Dashboard
+                </NavLink>
+              )}
 
-            {/* USER + ADMIN */}
-            {(isRole('USER') || isRole('ADMIN')) && (
-              <a href="/plan" style={navStyles.link}>Trip Planner</a>
-            )}
+              {/* USER + ADMIN */}
+              {(isRole('USER') || isRole('ADMIN')) && (
+                <NavLink to="/plan" className={navClass}>
+                  Trip Planner
+                </NavLink>
+              )}
 
-            {/* EVERYONE */}
-            <a href="/track" style={navStyles.link}>Live Map</a>
+              {/* EVERYONE */}
+              <NavLink to="/track" className={navClass}>
+                Live Map
+              </NavLink>
 
-            {/* DRIVER */}
-            {isRole('DRIVER') && (
-              <a href="/etm" style={navStyles.driverLink}>
-                🎮 Driver Console
-              </a>
-            )}
+              {/* DRIVER */}
+              {isRole('DRIVER') && (
+                <NavLink to="/etm" className={driverClass}>
+                  Driver Console
+                </NavLink>
+              )}
 
-            <button onClick={handleLogout} style={navStyles.logoutBtn}>
-              Logout
-            </button>
+              <button onClick={handleLogout} className="logout-btn">
+                Logout
+              </button>
+            </div>
           </div>
         </nav>
       )}
@@ -90,7 +103,7 @@ function App() {
               path="/"
               element={
                 isRole('DRIVER') ? <Navigate to="/etm" /> :
-                isRole('ADMIN')  ? <Navigate to="/admin" /> :
+                isRole('ADMIN') ? <Navigate to="/admin" /> :
                 <Navigate to="/plan" />
               }
             />
@@ -136,50 +149,5 @@ function App() {
     </Router>
   );
 }
-
-// ================= STYLES =================
-const navStyles = {
-  nav: {
-    padding: '15px 30px',
-    background: '#2c3e50',
-    color: 'white',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-  },
-  roleBadge: {
-    fontSize: '12px',
-    background: 'rgba(255,255,255,0.2)',
-    padding: '2px 6px',
-    borderRadius: '4px',
-    marginLeft: '10px'
-  },
-  link: {
-    color: 'white',
-    textDecoration: 'none',
-    fontSize: '16px',
-    fontWeight: '500',
-    cursor: 'pointer'
-  },
-  driverLink: {
-    color: '#f1c40f',
-    textDecoration: 'none',
-    fontSize: '16px',
-    fontWeight: 'bold',
-    border: '1px solid #f1c40f',
-    padding: '5px 10px',
-    borderRadius: '5px'
-  },
-  logoutBtn: {
-    background: '#e74c3c',
-    border: 'none',
-    color: 'white',
-    padding: '8px 12px',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontWeight: 'bold'
-  }
-};
 
 export default App;

@@ -103,13 +103,15 @@ def get_idle_resources(db: Session = Depends(get_db)):
     buses = db.execute(text("""
         SELECT bus_number, capacity
         FROM buses
-        WHERE bus_status = 'IDLE' AND is_active = true
+        WHERE (bus_status = 'IDLE' OR bus_status IS NULL)
+          AND is_active = true
     """)).fetchall()
 
     drivers = db.execute(text("""
         SELECT id, name
         FROM users
-        WHERE role = 'DRIVER' AND driver_status = 'IDLE'
+        WHERE role = 'DRIVER'
+          AND (driver_status = 'IDLE' OR driver_status IS NULL)
     """)).fetchall()
 
     return {
