@@ -1,5 +1,5 @@
 
-# 🚌 Moovit-Chalo Clone: Real-Time Bus Allocation System
+# 🚌 BUS_KAR_BHAI : Real-Time Bus Allocation System
 
 A comprehensive public transit management system and live-tracking dashboard. This project simulates real-time bus telemetry, manages routes and schedules using GTFS data, and provides an admin dashboard for live fleet monitoring.
 
